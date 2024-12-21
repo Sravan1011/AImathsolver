@@ -21,23 +21,28 @@ export default function Home() {
                 requestBody = { question };
             }
 
-            const res = await fetch("/api/solve", {
+            const res = await fetch("https://api.gemini.com/v1/solve", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
+                    "Authorization": `Bearer YOUR_GEMINI_API_KEY`, // Replace with your Gemini API Key
                 },
                 body: JSON.stringify(requestBody),
             });
+
+            if (!res.ok) {
+                throw new Error("Failed to get a response from Gemini API.");
+            }
 
             const data = await res.json();
             if (data.solution) {
                 setSolution(data.solution);
             } else {
-                setSolution("Error solving the problem.");
+                setSolution("Unable to solve the problem.");
             }
         } catch (error) {
-            console.error(error);
-            setSolution("Error connecting to the server.");
+            console.error("Error:", error);
+            setSolution("Error connecting to the Gemini API.");
         } finally {
             setLoading(false);
         }
