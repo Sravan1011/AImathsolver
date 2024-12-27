@@ -1,36 +1,44 @@
-import { NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { NextRequest, NextResponse } from "next/server";
+import OpenAI from "openai";
 
-const apiKey = process.env.GEMINI_API_KEY;
+const openai = new OpenAI({
+    apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+});
 
-if (!apiKey) {
-  throw new Error("GEMINI_API_KEY is not defined in the environment variables.");
-}
+export async function POST(req: NextRequest) {
+    try {
+        const { question } = await req.json();
 
-const genAI = new GoogleGenerativeAI(apiKey);
+        if (!question) {
+            return NextResponse.json(
+                { message: "Question is required." },
+                { status: 400 }
+            );
+        }
 
-export async function POST(req: Request) {
-  try {
-    const body = await req.json(); 
-    const { question } = body;
+        const response = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo", // More cost-effective than text-davinci-003
+            messages: [
+                {
+                    role: "system",
+                    content: "You are a helpful math tutor. Solve the problem and show your work step by step."
+                },
+                {
+                    role: "user",
+                    content: `Solve this math problem: ${question}`
+                }
+            ],
+            max_tokens: 500
+        });
 
-    if (!question) {
-      return NextResponse.json({ error: "Question is required" }, { status: 400 });
+        const solution = response.choices[0]?.message.content || "No solution found.";
+
+        return NextResponse.json({ solution });
+    } catch (error) {
+        console.error("Error connecting to OpenAI API:", error);
+        return NextResponse.json(
+            { message: "Error connecting to OpenAI API." },
+            { status: 500 }
+        );
     }
-
-    const model = await genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const result = await model.generateContent(question);
-
-    if (result?.response?.text) {
-      return NextResponse.json({ solution: result.response.text }, { status: 200 });
-    } else {
-      return NextResponse.json({ error: "Failed to generate solution." }, { status: 500 });
-    }
-  } catch (error) {
-    console.error("Error connecting to Gemini API:", error);
-    return NextResponse.json(
-      { error: "Error connecting to the Gemini API." },
-      { status: 500 }
-    );
-  }
 }
